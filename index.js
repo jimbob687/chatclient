@@ -11,7 +11,7 @@ var pool      =    mysql.createPool({
     connectionLimit : 10, //important
     host     : 'localhost',
     user     : 'nodejs',
-    password : 'xxxxxxxx',
+    password : 'xxxxxxxxx',
     database : 'nodejs',
     debug    :  false
 });
@@ -53,13 +53,27 @@ app.get('/', function(req, res){
 
 io.on('connection', function(socket) {
   console.log('a user connected');
+
+  socket.on('message', function(message) {
+    // Adapted from the following link to be able to send a cookie thru when connecting. 
+    // http://stackoverflow.com/questions/4753957/socket-io-authentication
+    if(message.rediskey) {
+      console.log("rediskey: " + message.rediskey);
+      // set the key of the socket
+      socket.rediskey = message.rediskey;
+    }
+  });
+
   socket.on('disconnect', function(){
     console.log('user disconnected');
   });
+
   socket.on('chat message', function(from, msg){
     console.log('message: ' + msg + " from: " + from);
     io.emit('chat message', msg);
     handle_database(from,msg);
+    // Get the key of the socket
+    console.log('Chat message by ', socket.rediskey);
   });
 });
 
