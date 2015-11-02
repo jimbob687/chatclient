@@ -1,12 +1,27 @@
-var app = require('express')();
+//var app = require('express')();
+var express = require('express');
+var app = express();
+var bodyParser = require('body-parser')
+app.use( bodyParser.json() );       // to support JSON-encoded bodies
+app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
+  extended: true
+})); 
+var json = require('express-json');
+app.use(json());       // to support JSON-encoded bodies
+
+
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var mysql     =    require('mysql');
+var config    =    require('config');    // Taken from https://www.npmjs.com/package/config
+var tnfauth = require('./tnfauth.js');
+var fs = require('fs');
 
 
 // Hash of the socket connections, key is the clientID and value is the socket object
-var clientHash = {};
+var socketHash = {};
 
+/*
 var pool      =    mysql.createPool({
     connectionLimit : 10, //important
     host     : 'localhost',
@@ -15,6 +30,14 @@ var pool      =    mysql.createPool({
     database : 'nodejs',
     debug    :  false
 });
+*/
+
+var dbConfig = config.get('chatdb.dbConfig');
+var pool      =    mysql.createPool(dbConfig);
+
+var fedDbConfig = config.get('feddb.dbConfig');
+var fedpool   =    mysql.createPool(fedDbConfig);
+
 
 function handle_database(from,msg) {
     
@@ -51,6 +74,23 @@ app.get('/', function(req, res){
   res.sendfile('index.html');
 });
 
+// This is for authentication
+app.post("/login", function(req, res) {
+    console.log("Have received a login request." + req.body);
+    if(req.body.username && req.body.password) {
+        console.log("username: " + req.body.username + "    passwd: " + req.body.password);
+        // check username and password
+        //if(authenticated) {
+            // create a token and store it with the current date (if you want it to expire)
+        //    var token = generateAndStoreRandomString(req.body.username);
+        //    res.redirect("http://your.domain/path?token=" + token);
+        //    return;
+        //}
+        // Do something if username or password wrong
+    }
+    // Do something if no username or password
+});
+
 io.on('connection', function(socket) {
   console.log('a user connected');
 
@@ -61,6 +101,9 @@ io.on('connection', function(socket) {
       console.log("rediskey: " + message.rediskey);
       // set the key of the socket
       socket.rediskey = message.rediskey;
+
+      // Add the socket to the hash
+      socketHash[message.rediskey] = socket;
     }
   });
 
@@ -79,5 +122,9 @@ io.on('connection', function(socket) {
 
 http.listen(3000, function(){
   console.log('listening on *:3000');
+
+  app.use('/css', express.static(__dirname + '/css'));
+
+
 });
 
