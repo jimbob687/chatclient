@@ -49,3 +49,46 @@ function check_auth(username,passwd) {
 }
 
 
+/*
+ * Take a password and the saltKey and convert to a Base64 string to match with what is in the db 
+*/
+function encodePasswd(passwd, saltKey) {
+
+  var ITERATION_COUNT = 1;
+  //String encodedPassword = null;
+
+  var saltByteArr = [];
+  saltByteArr = new Buffer(saltKey, 'base64');
+  // convert salt to a byte array
+  //for (var i = 0; i < saltKey.length; ++i) {
+  //  bytes.push(saltKey.charCodeAt(i));
+  //}
+
+  var shasum = crypto.createHash('sha256');
+  shasum.update(saltByteArr);
+
+  // byte[] btPass = digest.digest(password.getBytes("UTF-8"));
+
+  var passUTF8 = unescape(encodeURIComponent(passwd));
+
+  var passArr = [];
+  for (var i = 0; i < passUTF8.length; i++) {
+    arr.push(utf8.charCodeAt(i));
+  }
+
+  var btPass = shasum.update(passUTF8);
+
+  for(var i = 0; i < ITERATION_COUNT; i++) {
+    //digest.reset();
+    btPass = shasum(btPass);
+  }
+
+  // encode the byte array into Base64
+  var encodedPassword = new Buffer(btPass, 'binary').toString('base64');
+
+  return encodedPassword;
+}
+
+
+
+

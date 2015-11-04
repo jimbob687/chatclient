@@ -8,6 +8,7 @@ app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
 })); 
 var json = require('express-json');
 app.use(json());       // to support JSON-encoded bodies
+var crypto = require('crypto');
 
 
 var http = require('http').Server(app);
