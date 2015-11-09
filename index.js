@@ -37,7 +37,7 @@ var dbConfig = config.get('chatdb.dbConfig');
 var pool      =    mysql.createPool(dbConfig);
 
 var fedDbConfig = config.get('feddb.dbConfig');
-var fedpool   =    mysql.createPool(fedDbConfig);
+global.fedpool   =    mysql.createPool(fedDbConfig);
 
 
 function handle_database(from,msg) {
@@ -79,7 +79,9 @@ app.get('/', function(req, res){
 app.post("/login", function(req, res) {
     console.log("Have received a login request." + req.body);
     if(req.body.username && req.body.password) {
-        console.log("username: " + req.body.username + "    passwd: " + req.body.password);
+        //console.log("username: " + req.body.username + "    passwd: " + req.body.password);
+        console.log("username: " + req.body.username);
+        tnfauth.check_auth(req.body.username, req.body.password)
         // check username and password
         //if(authenticated) {
             // create a token and store it with the current date (if you want it to expire)
@@ -121,11 +123,11 @@ io.on('connection', function(socket) {
   });
 });
 
+
 http.listen(3000, function(){
   console.log('listening on *:3000');
 
   app.use('/css', express.static(__dirname + '/css'));
-
 
 });
 
