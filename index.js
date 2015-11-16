@@ -15,8 +15,10 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var mysql     =    require('mysql');
 var config    =    require('config');    // Taken from https://www.npmjs.com/package/config
-var tnfauth = require('./tnfauth.js');
+//var tnfauth = require('./tnfauth.js');
 var fs = require('fs');
+
+var authapi = require('./authapi.js');
 
 
 // Hash of the socket connections, key is the clientID and value is the socket object
@@ -39,6 +41,13 @@ var pool      =    mysql.createPool(dbConfig);
 var fedDbConfig = config.get('feddb.dbConfig');
 global.fedpool   =    mysql.createPool(fedDbConfig);
 
+
+
+// Get the configuration for the api server
+GLOBAL.apiServerConfig = config.get('apiserver');
+//console.log("ApiServer hostname: " + apiServerConfig.serverhostname);
+
+authapi.queryAuthAPI("username", "password");
 
 function handle_database(from,msg) {
     
