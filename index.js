@@ -1,6 +1,8 @@
 //var app = require('express')();
 var express = require('express');
+var cookieParser = require('cookie-parser')
 var app = express();
+app.use(cookieParser());     // This is for cookies
 var bodyParser = require('body-parser')
 app.use( bodyParser.json() );       // to support JSON-encoded bodies
 app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
@@ -47,7 +49,6 @@ global.fedpool   =    mysql.createPool(fedDbConfig);
 GLOBAL.apiServerConfig = config.get('apiserver');
 //console.log("ApiServer hostname: " + apiServerConfig.serverhostname);
 
-authapi.queryAuthAPI("username", "password");
 
 function handle_database(from,msg) {
     
@@ -80,6 +81,52 @@ function handle_database(from,msg) {
 }
 
 
+function authClient(username, password, req, res) {
+
+  authapi.queryAuthAPI(username, password, function(err, authJson) {
+
+    if (!err) {
+      if(authJson == null) {
+        console.log("Error, authJson is null");
+      }
+      else if("success" in authJson) {
+        var successVal = authJson["success"];
+        if(successVal == "true") {
+          if("sessionid" in authJson) {
+            var sessionID = authJson["sessionid"];
+            console.log("This sessionID: " + sessionID);
+            res.cookie('chatsession', sessionID, { maxAge: 900000, httpOnly: true });
+            res.send( { "success": true } );
+            res.status(200);
+          }
+          else {
+            console.log("sessionid not found in return json");
+          }
+        }
+        else if(successVal == "false") {
+          console.log("Error, unable to authenticate user");
+          res.status(404);
+        }
+        else{
+          console.log("Error, unable to determine success value: " + successVal);
+          res.status(404);
+        }
+      }
+    }
+    else {
+      var errMsg = null;
+      if("message" in authJson) {
+        errMsg = authJson.message;
+      }
+      console.log("Error, unable to authenticate user, error message: " + errMsg);
+      res.status(404);
+      res.send(errMsg);
+    }
+
+  });
+
+}
+
 app.get('/', function(req, res){
   res.sendfile('index.html');
 });
@@ -90,7 +137,8 @@ app.post("/login", function(req, res) {
     if(req.body.username && req.body.password) {
         //console.log("username: " + req.body.username + "    passwd: " + req.body.password);
         console.log("username: " + req.body.username);
-        tnfauth.check_auth(req.body.username, req.body.password)
+        authClient(req.body.username, req.body.password, req, res);
+        //tnfauth.check_auth(req.body.username, req.body.password)
         // check username and password
         //if(authenticated) {
             // create a token and store it with the current date (if you want it to expire)
@@ -139,4 +187,7 @@ http.listen(3000, function(){
   app.use('/css', express.static(__dirname + '/css'));
 
 });
+
+
+
 
