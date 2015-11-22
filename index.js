@@ -37,7 +37,7 @@ var pool      =    mysql.createPool({
 });
 */
 
-var dbConfig = config.get('chatdb.dbConfig');
+var chatdbconfig = config.get('chatdb.dbConfig');
 var pool      =    mysql.createPool(dbConfig);
 
 var fedDbConfig = config.get('feddb.dbConfig');
@@ -47,7 +47,7 @@ global.fedpool   =    mysql.createPool(fedDbConfig);
 
 // Get the configuration for the api server
 GLOBAL.apiServerConfig = config.get('apiserver');
-//console.log("ApiServer hostname: " + apiServerConfig.serverhostname);
+
 GLOBAL.requestConfig = config.get('request');
 
 

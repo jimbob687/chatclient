@@ -1,14 +1,7 @@
 
-//var dbConfig = config.get('chatdb.dbConfig');
-//var pool      =    mysql.createPool(dbConfig);
-
-//var fedDbConfig = config.get('feddb.dbConfig');
-//global.fedpool   =    mysql.createPool(fedDbConfig);
-
-
 module.exports = {
 
-  handle_database: function(jsessionid, adminID, callback) {
+  insertChatSession: function(jsessionid, adminID, callback) {
     
     pool.getConnection(function(err,connection){
       if (err) {
@@ -17,16 +10,18 @@ module.exports = {
         return;
       }   
 
-      console.log('connected as id ' + connection.threadId);
+      if(chatdbconfig.debug) {
+        console.log('connected as id ' + connection.threadId);
+      }
         
-      connection.query("INSERT INTO chatsessions (jsessionid, adminID, expiretime) VALUES (?,?,(now() + INTERVAL ? SECOND)), jsessionid, adminID, 3600, function(err,rows){
+      connection.query("INSERT INTO chatsessions (jsessionid, adminID, expiretime) VALUES (?,?,(now() + INTERVAL ? SECOND)), jsessionid, adminID, 3600, function(err,result){
         connection.release();
         if(!err) {
-          //res.json(rows);
-          console.log(rows);
+          var chatsessionID = result.insertId;    // key for the record that has just been inserted
+          callback(chatsessionID);
         }           
         else {
-          console.log("Error querying db: " + err);
+          console.log("Error inserting chatsession into db: " + err);
         }
       });
 
