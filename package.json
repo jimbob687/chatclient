@@ -11,6 +11,6 @@
     "express-json": "^1.0.0",
     "crypto": "^0.0.3",
     "config": "^1.16.0",
-    "request": "^2.65.0"
+    "request": "^2.67.0"
   }
 }

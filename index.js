@@ -48,6 +48,7 @@ global.fedpool   =    mysql.createPool(fedDbConfig);
 // Get the configuration for the api server
 GLOBAL.apiServerConfig = config.get('apiserver');
 //console.log("ApiServer hostname: " + apiServerConfig.serverhostname);
+GLOBAL.requestConfig = config.get('request');
 
 
 function handle_database(from,msg) {
@@ -80,6 +81,7 @@ function handle_database(from,msg) {
   });
 }
 
+// queryProfileAPI: function(username, password, jesessionid, callback)
 
 function authClient(username, password, req, res) {
 
@@ -98,6 +100,7 @@ function authClient(username, password, req, res) {
             res.cookie('chatsession', sessionID, { maxAge: 900000, httpOnly: true });
             res.send( { "success": true } );
             res.status(200);
+            adminProfile(sessionID);   // get the profile details for the admin
           }
           else {
             console.log("sessionid not found in return json");
@@ -126,6 +129,56 @@ function authClient(username, password, req, res) {
   });
 
 }
+
+// Get the admin profile information
+function adminProfile(sessionID) {
+
+  authapi.queryProfileAPI(sessionID, function(err, profileJson) {
+
+    if (!err) {
+      if(profileJson == null) {
+        console.log("Error, profileJson is null");
+      }
+      /*
+      else if("success" in authJson) {
+        var successVal = authJson["success"];
+        if(successVal == "true") {
+          if("sessionid" in authJson) {
+            var sessionID = authJson["sessionid"];
+            console.log("This sessionID: " + sessionID);
+            //res.cookie('chatsession', sessionID, { maxAge: 900000, httpOnly: true });
+            //res.send( { "success": true } );
+            //res.status(200);
+          }
+          else {
+            console.log("sessionid not found in return json");
+          }
+        }
+        else if(successVal == "false") {
+          console.log("Error, unable to authenticate user");
+          //res.status(404);
+        }
+        else{
+          console.log("Error, unable to determine success value: " + successVal);
+          //res.status(404);
+        }
+      }
+      */
+    }
+    else {
+      var errMsg = null;
+      if("message" in profileJson) {
+        errMsg = profileJson.message;
+      }
+      console.log("Error, unable to get profile details for user, error message: " + errMsg);
+      //res.status(404);
+      //res.send(errMsg);
+    }
+
+  });
+
+}
+
 
 app.get('/', function(req, res){
   res.sendfile('index.html');
