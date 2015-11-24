@@ -17,11 +17,11 @@ module.exports = {
 
     request.post(serverURL + apiServerConfig.authpath, formData, function (error, response, body) {
       if (!error && response.statusCode == 200) {
-        console.log(body) // Print the google web page.
+        logger.debug(body); 
         callback(false, JSON.parse(body));
       }
       else {
-        console.log("Error making request: " + body);
+        logger.error("Error making request: " + body);
         callback(true, JSON.parse(body));
       }
     })
@@ -45,27 +45,27 @@ module.exports = {
     var cookieHostName = apiServerConfig.protocol + "://" + apiServerConfig.serverhostname;
     j.setCookie(cookie, cookieHostName);
     if(requestConfig.verbose == true) {
-      console.log("apiServerConfig.serverhostname: " + apiServerConfig.serverhostname);
-      console.log("Cookie JAR: " + j.getCookieString(apiServerConfig.serverhostname));
+      logger.info("apiServerConfig.serverhostname: " + apiServerConfig.serverhostname);
+      logger.info("Cookie JAR: " + j.getCookieString(apiServerConfig.serverhostname));
     }
 
 
     request( { method: 'POST', url: serverURL, jar: j }, function (error, response, body) {
       if (!error && response.statusCode == 200) {
         if(requestConfig.verbose == true) {
-          console.log(body) // Print the response
+          logger.debug(body) // Print the response
         }
         callback(false, JSON.parse(body));
       }
       else if( response.statusCode == 302) {
         if(requestConfig.verbose == true) {
-          console.log("Redirect has been generated, need to log user in");
+          logger.debug("Redirect has been generated, need to log user in");
         }
         callback(true, { "authenticated" : false, "statuscode": response.statusCode });
       }
       else {
         if(requestConfig.verbose == true) {
-          console.log("Error making request: " + body);
+          logger.error("Error making request: " + body);
         }
         callback(true, JSON.parse(body));
       }

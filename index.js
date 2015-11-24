@@ -22,23 +22,17 @@ var fs = require('fs');
 
 var authapi = require('./authapi.js');
 
+var dbmethods = require('./dbmethods.js');
+
+global.logger = require('winston'); // this is for logging
+logger.level = 'debug';
 
 // Hash of the socket connections, key is the clientID and value is the socket object
 var socketHash = {};
 
-/*
-var pool      =    mysql.createPool({
-    connectionLimit : 10, //important
-    host     : 'localhost',
-    user     : 'nodejs',
-    password : 'xxxxxxxxx',
-    database : 'nodejs',
-    debug    :  false
-});
-*/
 
-var chatdbconfig = config.get('chatdb.dbConfig');
-var pool      =    mysql.createPool(dbConfig);
+var chatDbConfig = config.get('chatdb.dbConfig');
+global.pool      =    mysql.createPool(chatDbConfig);
 
 var fedDbConfig = config.get('feddb.dbConfig');
 global.fedpool   =    mysql.createPool(fedDbConfig);
@@ -53,23 +47,23 @@ GLOBAL.requestConfig = config.get('request');
 
 function handle_database(from,msg) {
     
-  pool.getConnection(function(err,connection){
+  pool.getConnection(function(err,connection) {
     if (err) {
       connection.release();
       res.json({"code" : 100, "status" : "Error in connection database"});
       return;
     }   
 
-    console.log('connected as id ' + connection.threadId);
+    logger.debug('connected to db as id ' + connection.threadId);
         
     connection.query("select * from users",function(err,rows){
       connection.release();
       if(!err) {
         //res.json(rows);
-        console.log(rows);
+        logger.debug(rows);
       }           
       else {
-        console.log("Error querying db: " + err);
+        logger.error("Error querying db: " + err);
       }
     });
 
@@ -81,6 +75,7 @@ function handle_database(from,msg) {
   });
 }
 
+
 // queryProfileAPI: function(username, password, jesessionid, callback)
 
 function authClient(username, password, req, res) {
@@ -89,29 +84,29 @@ function authClient(username, password, req, res) {
 
     if (!err) {
       if(authJson == null) {
-        console.log("Error, authJson is null");
+        logger.error("Error, authJson is null");
       }
       else if("success" in authJson) {
         var successVal = authJson["success"];
         if(successVal == "true") {
           if("sessionid" in authJson) {
             var sessionID = authJson["sessionid"];
-            console.log("This sessionID: " + sessionID);
+            logger.debug("This sessionID: " + sessionID);
             res.cookie('chatsession', sessionID, { maxAge: 900000, httpOnly: true });
             res.send( { "success": true } );
             res.status(200);
             adminProfile(sessionID);   // get the profile details for the admin
           }
           else {
-            console.log("sessionid not found in return json");
+            logger.error("sessionid not found in return json");
           }
         }
         else if(successVal == "false") {
-          console.log("Error, unable to authenticate user");
+          logger.error("Error, unable to authenticate user");
           res.status(404);
         }
         else{
-          console.log("Error, unable to determine success value: " + successVal);
+          logger.error("Error, unable to determine success value: " + successVal);
           res.status(404);
         }
       }
@@ -121,11 +116,25 @@ function authClient(username, password, req, res) {
       if("message" in authJson) {
         errMsg = authJson.message;
       }
-      console.log("Error, unable to authenticate user, error message: " + errMsg);
+      logger.error("Error, unable to authenticate user, error message: " + errMsg);
       res.status(404);
       res.send(errMsg);
     }
 
+  });
+
+}
+
+
+function insertDbSessionID(sessionID, adminID) {
+
+  dbmethods.insertChatSession(sessionID, adminID, function(err, chatsessionID) {
+    if(!err) {
+      logger.debug("Have inserted into db chatsessionID: " + chatsessionID);
+    }
+    else {
+      logger.error("Error attempting to insert sessionID into db for adminID: " + adminID);
+    }
   });
 
 }
@@ -137,40 +146,31 @@ function adminProfile(sessionID) {
 
     if (!err) {
       if(profileJson == null) {
-        console.log("Error, profileJson is null");
+        logger.error("Error, profileJson is null");
       }
-      /*
-      else if("success" in authJson) {
-        var successVal = authJson["success"];
-        if(successVal == "true") {
-          if("sessionid" in authJson) {
-            var sessionID = authJson["sessionid"];
-            console.log("This sessionID: " + sessionID);
-            //res.cookie('chatsession', sessionID, { maxAge: 900000, httpOnly: true });
-            //res.send( { "success": true } );
-            //res.status(200);
-          }
-          else {
-            console.log("sessionid not found in return json");
-          }
+      else {
+        var adminJson = {};
+        if("profile" in profileJson) {
+          // get the profile in the Json
+          adminJson = profileJson.profile;
+          logger.debug("adminJson: " + JSON.stringify(adminJson));
         }
-        else if(successVal == "false") {
-          console.log("Error, unable to authenticate user");
-          //res.status(404);
+        var adminID = null;
+        if("sTarget_AdminID" in adminJson) {
+          adminID = adminJson.sTarget_AdminID;
+          insertDbSessionID(sessionID, adminID);   // insert the session into the database
         }
-        else{
-          console.log("Error, unable to determine success value: " + successVal);
-          //res.status(404);
+        else {
+          logger.error("adminID not found in adminJson");
         }
       }
-      */
     }
     else {
       var errMsg = null;
       if("message" in profileJson) {
         errMsg = profileJson.message;
       }
-      console.log("Error, unable to get profile details for user, error message: " + errMsg);
+      logger.error("Error, unable to get profile details for user, error message: " + errMsg);
       //res.status(404);
       //res.send(errMsg);
     }
@@ -186,32 +186,21 @@ app.get('/', function(req, res){
 
 // This is for authentication
 app.post("/login", function(req, res) {
-    console.log("Have received a login request." + req.body);
+    logger.debug("Have received a login request." + req.body);
     if(req.body.username && req.body.password) {
-        //console.log("username: " + req.body.username + "    passwd: " + req.body.password);
-        console.log("username: " + req.body.username);
+        logger.debug("username: " + req.body.username);
         authClient(req.body.username, req.body.password, req, res);
-        //tnfauth.check_auth(req.body.username, req.body.password)
-        // check username and password
-        //if(authenticated) {
-            // create a token and store it with the current date (if you want it to expire)
-        //    var token = generateAndStoreRandomString(req.body.username);
-        //    res.redirect("http://your.domain/path?token=" + token);
-        //    return;
-        //}
-        // Do something if username or password wrong
     }
-    // Do something if no username or password
 });
 
 io.on('connection', function(socket) {
-  console.log('a user connected');
+  logger.debug('a user connected');
 
   socket.on('message', function(message) {
     // Adapted from the following link to be able to send a cookie thru when connecting. 
     // http://stackoverflow.com/questions/4753957/socket-io-authentication
     if(message.rediskey) {
-      console.log("rediskey: " + message.rediskey);
+      logger.debug("rediskey: " + message.rediskey);
       // set the key of the socket
       socket.rediskey = message.rediskey;
 
@@ -221,21 +210,21 @@ io.on('connection', function(socket) {
   });
 
   socket.on('disconnect', function(){
-    console.log('user disconnected');
+    logger.debug('user disconnected');
   });
 
   socket.on('chat message', function(from, msg){
-    console.log('message: ' + msg + " from: " + from);
+    logger.debug('message: ' + msg + " from: " + from);
     io.emit('chat message', msg);
     handle_database(from,msg);
     // Get the key of the socket
-    console.log('Chat message by ', socket.rediskey);
+    logger.debug('Chat message by ', socket.rediskey);
   });
 });
 
 
 http.listen(3000, function(){
-  console.log('listening on *:3000');
+  logger.info('listening on *:3000');
 
   app.use('/css', express.static(__dirname + '/css'));
 

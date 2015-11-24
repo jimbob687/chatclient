@@ -10,24 +10,26 @@ module.exports = {
         return;
       }   
 
-      if(chatdbconfig.debug) {
-        console.log('connected as id ' + connection.threadId);
-      }
+      //if(chatdbconfig.debug) {
+        logger.debug('connected as id ' + connection.threadId);
+      //}
         
-      connection.query("INSERT INTO chatsessions (jsessionid, adminID, expiretime) VALUES (?,?,(now() + INTERVAL ? SECOND)), jsessionid, adminID, 3600, function(err,result){
+      connection.query('INSERT INTO chatsessions (jsessionid, adminID, expiretime) VALUES (?,?,(now() + INTERVAL ? SECOND))', [jsessionid, adminID, 3600], function(err,result) {
         connection.release();
         if(!err) {
           var chatsessionID = result.insertId;    // key for the record that has just been inserted
-          callback(chatsessionID);
+          callback(false, chatsessionID);
         }           
         else {
-          console.log("Error inserting chatsession into db: " + err);
+          logger.error("Error inserting chatsession into db: " + err);
+          callback(true, err);
         }
       });
 
       connection.on('error', function(err) {      
         res.json({"code" : 100, "status" : "Error in connection database"});
-        return;     
+        //return;     
+        callback(true, res);
       });
 
     });
