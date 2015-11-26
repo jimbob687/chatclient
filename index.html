@@ -42,40 +42,72 @@
       #messages li:nth-child(odd) { background: #eee; }
 
       .chatdiv {
-        width: 50%;
         height: 100%;
         float: left;
         postion: relative;
       }
+
+      .chatheading {
+        width: 100%;
+        float: left;
+      }
+
     </style>
   </head>
   <link rel="stylesheet" href="css/tannfefrontbootstrap.css">
   <script src="/socket.io/socket.io.js"></script>
+  <!--
   <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
   <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+  -->
+  <script src="js/socket.io-1.2.0.js"></script>
+  <script src="js/jquery-1.11.1.js"></script>
 
   <script>
+
+    // function to get a cookie
+    function GetCookie(cookieName) {
+      // cookies are separated by semicolons
+      var aCookie = document.cookie.split("; ");
+      for (var i=0; i < aCookie.length; i++) {
+        // a name/value pair (a crumb) is separated by an equal sign
+        var aCrumb = aCookie[i].split("=");
+        if (cookieName == aCrumb[0]) 
+          return unescape(aCrumb[1]);
+      }
+      // a cookie with the requested name does not exist
+      return null;
+    }
+
     $( document ).ready(function() {
 
       var socket = io();
       socket.on('connect', function() {
-        //var rediskey = GetCookie('rediskey'); //http://msdn.microsoft.com/en-us/library/ms533693(v=vs.85).aspx
+        var jessionID = null;
+        jsessionID = GetCookie('JSESSIONID'); //http://msdn.microsoft.com/en-us/library/ms533693(v=vs.85).aspx
+        console.log("Cookie: " + jsessionID);
         // This will generate a random number and send it, this is only a test for when users are properly setup
-        var max = 500, min = 10;
-        var redisKey = Math.random() * (max - min) + min;
-        socket.send({rediskey: redisKey});
+        // var max = 500, min = 10;
+        // var redisKey = Math.random() * (max - min) + min;
+        socket.send({JSESSION: jsessionID});
       });
+
       $('form').submit(function(){
-        socket.emit('chat message', $('#m').val());
+        var jessionID = GetCookie('JSESSIONID'); //http://msdn.microsoft.com/en-us/library/ms533693(v=vs.85).aspx
+        socket.emit('message', { message: $('#m').val(), JSESSIONID: jsessionID });
         $('#m').val('');
         return false;
       });
+
       $('#submitbtn').on('click', function(){
-        console.log("Clicked the submit function");
-        socket.emit('chat message', "james", $('#m').val());
+        var jsessionID = null;
+        jsessionID = GetCookie('JSESSIONID');
+        console.log("Clicked the submit function with cookie: " + jsessionID);
+        socket.emit('data', "james", $('#m').val(), jsessionID);
         $('#m').val('');
         return false;
       });
+
       socket.on('chat message', function(msg){
         $('#messages').append($('<li>').text(msg));
       });
@@ -119,7 +151,7 @@
   <body>
 
     <!-- To keep information about rooms that the user is in -->
-    <div id="convwindow" class="chatdiv">
+    <div id="convwindow" class="chatdiv" style="width: 30%;">
 
       <div id="loginform" class="tannfeloginform">
         <div id="loginerrordiv" class="tannfeerrordiv" style="width: 250px; height: 20px; float:left;" ></div>
@@ -148,7 +180,31 @@
 
     </div>
 
-    <div id="chatwindow" class="chatdiv">
+
+    <div id="covwindow" class="chatdiv"  style="width: 20%;">
+    
+      <div id="haciendadiv" style="width: 100%; float: left;">
+
+        <div id="haciendatitle" style="float: left; width: 100%">
+          <h3 class="chatheading">Haciendas</h3>
+        </div>
+
+      </div>
+
+
+      <div id="contactwindow" style="width: 100%; float: left;">
+    
+        <div id="contacttitle" style="float: left; width: 100%">
+          <h3 class="chatheading">Contacts</h3>
+        </div>
+
+      </div>
+
+
+    </div>
+
+
+    <div id="chatwindow" class="chatdiv" style="width: 50%;">
       <ul id="messages"></ul>
       <div id="submitform">
         <input id="m" autocomplete="off" /><button id="submitbtn">Send</button>

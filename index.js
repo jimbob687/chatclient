@@ -92,7 +92,8 @@ function authClient(username, password, req, res) {
           if("sessionid" in authJson) {
             var sessionID = authJson["sessionid"];
             logger.debug("This sessionID: " + sessionID);
-            res.cookie('chatsession', sessionID, { maxAge: 900000, httpOnly: true });
+            //res.cookie('chatcookie', sessionID, { maxAge: 3600, httpOnly: false });   // maxAge breaks this
+            res.cookie('JSESSIONID', sessionID, { httpOnly: false });
             res.send( { "success": true } );
             res.status(200);
             adminProfile(sessionID);   // get the profile details for the admin
@@ -199,6 +200,10 @@ io.on('connection', function(socket) {
   socket.on('message', function(message) {
     // Adapted from the following link to be able to send a cookie thru when connecting. 
     // http://stackoverflow.com/questions/4753957/socket-io-authentication
+    logger.debug("Have received a message: " + JSON.stringify(message));
+    if(message.JSESSIONID) {
+      logger.debug("JSESSIONID: " + message.JSESSIONID);
+    }
     if(message.rediskey) {
       logger.debug("rediskey: " + message.rediskey);
       // set the key of the socket
@@ -213,8 +218,13 @@ io.on('connection', function(socket) {
     logger.debug('user disconnected');
   });
 
-  socket.on('chat message', function(from, msg){
-    logger.debug('message: ' + msg + " from: " + from);
+  socket.on('data', function(from, msg, jsessionID){
+    // var jessionID = null;
+    // if("JSESSIONID" in data) {
+    //   jsessionID = data.JSESSIONID;
+    // }
+    logger.debug('message: ' + msg + " from: " + from + " JSESSIONID: " + jsessionID);
+    //logger.debug('message: ' + msg + " from: " + from);
     io.emit('chat message', msg);
     handle_database(from,msg);
     // Get the key of the socket
@@ -227,6 +237,7 @@ http.listen(3000, function(){
   logger.info('listening on *:3000');
 
   app.use('/css', express.static(__dirname + '/css'));
+  app.use('/js', express.static(__dirname + '/js'));
 
 });
 
