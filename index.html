@@ -48,13 +48,37 @@
       }
 
       .chatheading {
-        width: 100%;
+        width: 80%;
         float: left;
+      }
+
+      .addbtndiv {
+        /*position: absolute;
+        bottom: 0;
+        right: 0;*/
+        float: right;
+      }
+
+      .addbtn {
+	height: 15px;
+	padding: 7px 0 0 0;
+	border: none;
+	margin: 1px;
+	background-color: transparent;
+	cursor: pointer;
+	font-size: 11px !important;
+        color: gray; 
+      }
+
+      .addbtn:hover {
+        color: green;
       }
 
     </style>
   </head>
   <link rel="stylesheet" href="css/tannfefrontbootstrap.css">
+  <link rel="stylesheet" href="css/font-awesome.min.css">
+
   <script src="/socket.io/socket.io.js"></script>
   <!--
   <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
@@ -181,21 +205,35 @@
     </div>
 
 
-    <div id="covwindow" class="chatdiv"  style="width: 20%;">
+    <div id="covwindow" class="chatdiv"  style="width: 20%; min-width: 200px;">
     
-      <div id="haciendadiv" style="width: 100%; float: left;">
+      <div id="haciendadiv" style="width: 180px; float: left; margin-bottom: 10px;">
 
-        <div id="haciendatitle" style="float: left; width: 100%">
-          <h3 class="chatheading">Haciendas</h3>
+        <div id="haciendatitle" style="float: left; width: 100%; position: relative; height: 28px;">
+          <h4 class="chatheading" style="margin-top: 5px; margin-bottom: 8px;">Haciendas</h4>
+
+          <div class="addbtndiv">
+            <button id="addhaciendabtn" class="addbtn">
+              <i class="fa fa-plus-square-o fa-2x"></i>
+            </button>
+          </div>
+
         </div>
 
       </div>
 
 
-      <div id="contactwindow" style="width: 100%; float: left;">
+      <div id="contactwindow" style="width: 180px; float: left;">
     
-        <div id="contacttitle" style="float: left; width: 100%">
-          <h3 class="chatheading">Contacts</h3>
+        <div id="contacttitle" style="float: left; width: 100%; position: relative; height: 28px;">
+          <h4 class="chatheading">Contacts</h4>
+
+          <div class="addbtndiv">
+            <button id="addcontactbtn" class="addbtn">
+              <i class="fa fa-plus-square-o fa-2x"></i>
+            </button>
+          </div>
+
         </div>
 
       </div>
