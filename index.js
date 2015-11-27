@@ -15,6 +15,8 @@ var crypto = require('crypto');
 
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
+
+
 var mysql     =    require('mysql');
 var config    =    require('config');    // Taken from https://www.npmjs.com/package/config
 //var tnfauth = require('./tnfauth.js');
@@ -34,15 +36,39 @@ var socketHash = {};
 var chatDbConfig = config.get('chatdb.dbConfig');
 global.pool      =    mysql.createPool(chatDbConfig);
 
+/* Taken out for now as not using this
 var fedDbConfig = config.get('feddb.dbConfig');
 global.fedpool   =    mysql.createPool(fedDbConfig);
+*/
 
+var expressConfig = config.get('express');
 
+// Central controller server information to form a connection
+var controllerConfig = config.get('controller');
 
 // Get the configuration for the api server
 GLOBAL.apiServerConfig = config.get('apiserver');
 
 GLOBAL.requestConfig = config.get('request');
+
+
+
+// This is to connect to a remote controller server
+// http://stackoverflow.com/questions/8837236/how-to-connect-two-node-js-servers-with-websockets
+// http://stackoverflow.com/questions/14118076/socket-io-server-to-server/14118102#14118102
+// http://stackoverflow.com/questions/14118076/socket-io-server-to-server/14118102#14118102    this one works, requires protocol
+var controllerURL = controllerConfig.protocol + "://" + controllerConfig.serverhostname + ":" + controllerConfig.serverport
+logger.info("controllerURL: " + controllerURL);
+var iocontroller = require('socket.io-client')
+//var socketcontroller = iocontroller.connect('http://127.0.0.1:3001', {reconnect: true});
+var socketcontroller = iocontroller.connect(controllerURL, {reconnect: true});
+
+logger.info("About to try to create a socket connection");
+// Add a connect listener
+socketcontroller.on('connect', function(socketcontroller) { 
+  logger.info('Connected!');
+});
+
 
 
 function handle_database(from,msg) {
@@ -233,8 +259,8 @@ io.on('connection', function(socket) {
 });
 
 
-http.listen(3000, function(){
-  logger.info('listening on *:3000');
+http.listen(expressConfig.port, function(){
+  logger.info('listening on *:' + expressConfig.port);
 
   app.use('/css', express.static(__dirname + '/css'));
   app.use('/js', express.static(__dirname + '/js'));
