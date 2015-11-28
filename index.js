@@ -30,7 +30,9 @@ global.logger = require('winston'); // this is for logging
 logger.level = 'debug';
 
 // Hash of the socket connections, key is the clientID and value is the socket object
-var socketHash = {};
+var socketClientHash = {};
+// Hash of the socket connections, key is the JSESSIONID and value is the clientID e.g. { JSESSIONID1: 6576, JSESSIONID2: 9845 }
+var socketSessionHash = {};
 
 
 var chatDbConfig = config.get('chatdb.dbConfig');
@@ -40,6 +42,8 @@ global.pool      =    mysql.createPool(chatDbConfig);
 var fedDbConfig = config.get('feddb.dbConfig');
 global.fedpool   =    mysql.createPool(fedDbConfig);
 */
+
+global sessionConfig = config.get('session');
 
 var expressConfig = config.get('express');
 
@@ -122,7 +126,7 @@ function authClient(username, password, req, res) {
             res.cookie('JSESSIONID', sessionID, { httpOnly: false });
             res.send( { "success": true } );
             res.status(200);
-            adminProfile(sessionID);   // get the profile details for the admin
+            adminProfile(sessionID, null);   // get the profile details for the admin
           }
           else {
             logger.error("sessionid not found in return json");
@@ -153,21 +157,25 @@ function authClient(username, password, req, res) {
 }
 
 
-function insertDbSessionID(sessionID, adminID) {
+function insertDbSessionID(sessionID, clientID) {
 
-  dbmethods.insertChatSession(sessionID, adminID, function(err, chatsessionID) {
+  dbmethods.insertChatSession(sessionID, clientID, function(err, chatsessionID) {
     if(!err) {
       logger.debug("Have inserted into db chatsessionID: " + chatsessionID);
     }
     else {
-      logger.error("Error attempting to insert sessionID into db for adminID: " + adminID);
+      logger.error("Error attempting to insert sessionID into db for clientID: " + clientID);
     }
   });
 
 }
 
-// Get the admin profile information
-function adminProfile(sessionID) {
+/*
+ * Get the admin profile information
+ * sessionID - is the JSESSIONID that we are making the query for
+ * socket - is the socket that the request came in on, if is null then sessionID didn't come in on a socket
+*/
+function adminProfile(sessionID, socket) {
 
   authapi.queryProfileAPI(sessionID, function(err, profileJson) {
 
@@ -182,13 +190,29 @@ function adminProfile(sessionID) {
           adminJson = profileJson.profile;
           logger.debug("adminJson: " + JSON.stringify(adminJson));
         }
-        var adminID = null;
+        var clientID = null;
         if("sTarget_AdminID" in adminJson) {
-          adminID = adminJson.sTarget_AdminID;
-          insertDbSessionID(sessionID, adminID);   // insert the session into the database
+          clientID = adminJson.sTarget_AdminID;
+          insertDbSessionID(sessionID, clientID);   // insert the session into the database
         }
         else {
-          logger.error("adminID not found in adminJson");
+          logger.error("clientID not found in adminJson");
+        }
+
+        if(clientID !== null) {
+          // add the sessionID to the hash
+          socketSessionHash[sessionID] = clientID;
+
+          // build a hash and add the clientId to the main hash
+          var clientHash = {};
+          clientHash["sessionID"] = sessionID;
+          var sessionExpire = Math.floor(Date.now() / 1000) + sessionConfig.maxagesecs;
+          clientHash["expire"] = sessionExpire;
+          if(socket !== null) {
+            // we have a socket with this
+            clientHash["socket"] = socket;
+          }
+          socketClientHash[clientID] = clientHash;   // add to the hash
         }
       }
     }
@@ -200,6 +224,50 @@ function adminProfile(sessionID) {
       logger.error("Error, unable to get profile details for user, error message: " + errMsg);
       //res.status(404);
       //res.send(errMsg);
+    }
+
+  });
+
+}
+
+/*
+ * Function to get the details of the session from the db based on the sessionID that has been receieved
+ * sessionID - JSESSIONID that has been received
+ * socket - socket that the connection is for
+ */
+function searchSessionID(sessionID, socket) {
+
+  dbmethods.querySessionID(sessionID, function(err, rows) {
+
+    if(!err) {
+      if(rows == null) {
+
+      }
+      else if(rows.length == 0) {
+        // no results returned, we need to call the api server for client details
+        adminProfile(sessionID, socket);
+      }
+      else if(rows.length > 1) {
+        // should only have max 1 row returned, this is an error
+      }
+      else if(rows.length == 1) {
+        // add the sessionID to the hash
+        socketSessionHash[sessionID] = clientID;
+
+        var clientHash = {};
+        // we have got details of the user
+        var resultRow = rows[0];
+
+        clientHash["sessionID"] = sessionID;
+
+        if(socket !== null) {
+          clientHash["socket"] = socket;
+        }
+        
+        if("clientID" in resultRow) {
+          socketClientHash[resultRow.clientID] = clientHash;
+        }
+      }
     }
 
   });
@@ -229,6 +297,12 @@ io.on('connection', function(socket) {
     logger.debug("Have received a message: " + JSON.stringify(message));
     if(message.JSESSIONID) {
       logger.debug("JSESSIONID: " + message.JSESSIONID);
+      if!(message.JSESSIONID in socketHash) {
+        // create a Hash with the socket ID in it and add it to the socketHash, this is so we can track sessionIDs vs sockets in the future
+        var starterHash = {};
+        starterHash["session"] = socket
+        socketHash[message.JSESSIONID] = starterHash;
+      }
     }
     if(message.rediskey) {
       logger.debug("rediskey: " + message.rediskey);
